@@ -13,8 +13,9 @@ from src.bert_CNN import bert_cnn, bert_cnn_Config
 from src.bert_lr_last4layer import bert_lr_last4layer, bert_lr_last4layer_Config
 from transformers import AdamW
 from transformers import BertConfig, BertForSequenceClassification
-from utils import Dataset, convert_text_to_ids, seq_padding
+from util import Dataset, convert_text_to_ids, seq_padding
 from bert_lr import bert_lr, bert_lr_Config
+from utils.progressbar import ProgressBar
 
 
 class transformers_bert_binary_classification(object):
@@ -97,6 +98,7 @@ class transformers_bert_binary_classification(object):
         return train_loader, valid_loader
 
     def train_an_epoch(self, data_iterator):
+        pbar = ProgressBar(n_total=len(data_iterator), desc='Training')
         self.model_setup()
         epoch_loss = 0
         epoch_acc = 0
@@ -132,12 +134,13 @@ class transformers_bert_binary_classification(object):
             acc = ((y_pred_label == label.view(-1)).sum()).item()
             # 反向传播
             loss.backward()
+            pbar(i, {'loss': loss.item()})
             self.optimizer.step()
             # epoch 中的 loss 和 acc 累加
             epoch_loss += loss.item()
             epoch_acc += acc
             if i % self.config.get("training_rule", "show_metric_iter") == 0:
-                print("batch_num:", i, "\t", "current loss:", epoch_loss / (i + 1), "\t", "current acc:",
+                print("current loss:", epoch_loss / (i + 1), "\t", "current acc:",
                       epoch_acc / ((i + 1) * len(label)))
         return epoch_loss / len(data_iterator), epoch_acc / len(data_iterator.dataset.dataset)
 
@@ -173,6 +176,7 @@ class transformers_bert_binary_classification(object):
         train_loader, valid_loader = self.get_data()
 
         for i in range(epochs):
+            print('*********** EPOCH:{} ***********'.format(epochs))
             train_loss, train_acc = self.train_an_epoch(train_loader)
             print("train loss: ", train_loss, "\t", "train acc:", train_acc)
             valid_loss, valid_acc = self.evaluate(valid_loader)
