@@ -37,6 +37,7 @@ class bert_classifier(object):
         self.tokenizer = transformers.BertTokenizer(vocab_save_path)
         self.model.to(self.device)
         self.model.eval()
+        self.max_seq_length = self.config.get('training_rule', 'max_length')
 
     def model_setup(self):
         weight_decay = self.config.get("training_rule", "weight_decay")
@@ -55,7 +56,7 @@ class bert_classifier(object):
         self.criterion = nn.CrossEntropyLoss()
 
     def predict(self, sentence):
-        input_ids, token_type_ids = convert_text_to_ids(self.tokenizer, sentence)
+        input_ids, token_type_ids = convert_text_to_ids(self.tokenizer, sentence,self.max_seq_length)
         input_ids, input_attention_mask = seq_padding(self.tokenizer, [input_ids])
         token_type_ids, _ = seq_padding(self.tokenizer, [token_type_ids])
         # 需要 LongTensor

@@ -61,8 +61,9 @@ class transformers_bert_binary_classification(object):
         # self.model = bert_lr(bert_lr_Config(self.config))
         # self.model = bert_cnn(bert_cnn_Config(self.config))
         self.model = bert_lr_last4layer(bert_lr_last4layer_Config(self.config))
-
         self.model.to(self.device)
+
+        self.max_seq_length = self.config.get('training_rule', 'max_length')
 
     def model_setup(self):
         weight_decay = self.config.get("training_rule", "weight_decay")
@@ -104,10 +105,11 @@ class transformers_bert_binary_classification(object):
         epoch_loss = 0
         epoch_acc = 0
 
+
         for i, batch in enumerate(data_iterator):
             label = batch["label"]
             text = batch["text"]
-            input_ids, token_type_ids = convert_text_to_ids(self.tokenizer, text)
+            input_ids, token_type_ids = convert_text_to_ids(self.tokenizer, text,self.max_seq_length)
             input_ids, input_attention_mask = seq_padding(self.tokenizer, input_ids)
             token_type_ids, _ = seq_padding(self.tokenizer, token_type_ids)
             # 标签形状为 (batch_size, 1)
@@ -154,7 +156,7 @@ class transformers_bert_binary_classification(object):
             for i, batch in enumerate(data_iterator):
                 label = batch["label"]
                 text = batch["text"]
-                input_ids, token_type_ids = convert_text_to_ids(self.tokenizer, text)
+                input_ids, token_type_ids = convert_text_to_ids(self.tokenizer, text,self.max_seq_length)
                 input_ids, input_attention_mask = seq_padding(self.tokenizer, input_ids)
                 token_type_ids, _ = seq_padding(self.tokenizer, token_type_ids)
                 label = label.unsqueeze(1)
@@ -212,7 +214,7 @@ class transformers_bert_binary_classification(object):
         self.model_setup()
         self.model.eval()
         # 转token后padding
-        input_ids, token_type_ids = convert_text_to_ids(self.tokenizer, sentence)
+        input_ids, token_type_ids = convert_text_to_ids(self.tokenizer, sentence,self.max_seq_length)
         input_ids, input_attention_mask = seq_padding(self.tokenizer, [input_ids])
         token_type_ids, _ = seq_padding(self.tokenizer, [token_type_ids])
         # 需要 LongTensor
