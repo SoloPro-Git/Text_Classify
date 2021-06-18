@@ -38,7 +38,6 @@ class bert_classifier(object):
         self.model.to(self.device)
         self.model.eval()
 
-
     def model_setup(self):
         weight_decay = self.config.get("training_rule", "weight_decay")
         learning_rate = self.config.get("training_rule", "learning_rate")
@@ -49,15 +48,16 @@ class bert_classifier(object):
         optimizer_grouped_parameters = [
             {'params': [p for n, p in self.model.named_parameters() if not any(nd in n for nd in no_decay)],
              'weight_decay': weight_decay},
-            {'params': [p for n, p in self.model.named_parameters() if any(nd in n for nd in no_decay)], 'weight_decay': 0.0}
+            {'params': [p for n, p in self.model.named_parameters() if any(nd in n for nd in no_decay)],
+             'weight_decay': 0.0}
         ]
         self.optimizer = AdamW(optimizer_grouped_parameters, lr=learning_rate)
         self.criterion = nn.CrossEntropyLoss()
 
     def predict(self, sentence):
         input_ids, token_type_ids = convert_text_to_ids(self.tokenizer, sentence)
-        input_ids = seq_padding(self.tokenizer, [input_ids])
-        token_type_ids = seq_padding(self.tokenizer, [token_type_ids])
+        input_ids, input_attention_mask = seq_padding(self.tokenizer, [input_ids])
+        token_type_ids, _ = seq_padding(self.tokenizer, [token_type_ids])
         # 需要 LongTensor
         input_ids, token_type_ids = input_ids.long(), token_type_ids.long()
         # 梯度清零
@@ -68,6 +68,7 @@ class bert_classifier(object):
         y_pred_prob = output[0]
         y_pred_label = y_pred_prob.argmax(dim=1)
         print(y_pred_label)
+
 
 if __name__ == '__main__':
     predictor = bert_classifier()

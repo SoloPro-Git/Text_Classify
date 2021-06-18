@@ -27,9 +27,10 @@ class Config(object):
                 "max_length": 300, # 输入序列长度，别超过512
                 "hidden_dropout_prob": 0.3,
                 "num_labels": 2, # 几分类个数
+                "show_metric_iter": 3,
                 "learning_rate": 1e-5,
                 "weight_decay": 1e-2,
-                "batch_size": 32
+                "batch_size": 4
             },
 
             "result": {
