@@ -13,7 +13,7 @@ from src.bert_CNN import bert_cnn, bert_cnn_Config
 from src.bert_lr_last4layer import bert_lr_last4layer, bert_lr_last4layer_Config
 from transformers import AdamW
 from transformers import BertConfig, BertForSequenceClassification
-from utils import SentimentDataset, convert_text_to_ids, seq_padding
+from utils import Dataset, convert_text_to_ids, seq_padding
 from bert_lr import bert_lr,bert_lr_Config
 
 class transformers_bert_binary_classification(object):
@@ -90,20 +90,20 @@ class transformers_bert_binary_classification(object):
 
         # 数据读入
         # 加载数据集
-        sentiment_train_set = SentimentDataset(train_set_path)
-        sentiment_train_loader = DataLoader(sentiment_train_set, batch_size=batch_size, shuffle=True, num_workers=2)
-        sentiment_valid_set = SentimentDataset(valid_set_path)
-        sentiment_valid_loader = DataLoader(sentiment_valid_set, batch_size=batch_size, shuffle=False, num_workers=2)
+        train_set = Dataset(train_set_path)
+        train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True, num_workers=2)
+        valid_set = Dataset(valid_set_path)
+        valid_loader = DataLoader(valid_set, batch_size=batch_size, shuffle=False, num_workers=2)
 
 
-        return sentiment_train_loader, sentiment_valid_loader
+        return train_loader, valid_loader
 
-    def train_an_epoch(self, iterator):
+    def train_an_epoch(self, data_iterator):
         self.model_setup()
         epoch_loss = 0
         epoch_acc = 0
 
-        for i, batch in enumerate(iterator):
+        for i, batch in enumerate(data_iterator):
             label = batch["label"]
             text = batch["text"]
             input_ids, token_type_ids = convert_text_to_ids(self.tokenizer, text)
@@ -139,7 +139,7 @@ class transformers_bert_binary_classification(object):
             epoch_acc += acc
             if i % 200 == 0:
                 print("current loss:", epoch_loss / (i + 1), "\t", "current acc:", epoch_acc / ((i + 1) * len(label)))
-        return epoch_loss / len(iterator), epoch_acc / len(iterator.dataset.dataset)
+        return epoch_loss / len(data_iterator), epoch_acc / len(data_iterator.dataset.dataset)
 
     def evaluate(self, iterator):
         self.model.eval()
@@ -170,12 +170,12 @@ class transformers_bert_binary_classification(object):
 
 
     def train(self, epochs):
-        sentiment_train_loader, sentiment_valid_loader = self.get_data()
+        train_loader, valid_loader = self.get_data()
 
         for i in range(epochs):
-            train_loss, train_acc = self.train_an_epoch(sentiment_train_loader)
+            train_loss, train_acc = self.train_an_epoch(train_loader)
             print("train loss: ", train_loss, "\t", "train acc:", train_acc)
-            valid_loss, valid_acc = self.evaluate(sentiment_valid_loader)
+            valid_loss, valid_acc = self.evaluate(valid_loader)
             print("valid loss: ", valid_loss, "\t", "valid acc:", valid_acc)
         self.save_model()
 

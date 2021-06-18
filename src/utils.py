@@ -1,16 +1,12 @@
 # -*- coding: utf-8 -*-
 
-"""
-Created on 2020-07-29 09:03
-@Author  : Justin Jiang
-@Email   : jw_jiang@pku.edu.com
-"""
+
 
 import torch
 from torch.utils.data import Dataset
 import pandas as pd
 
-class SentimentDataset(Dataset):
+class Dataset(Dataset):
     def __init__(self, path_to_file):
         self.dataset = pd.read_csv(path_to_file, sep="\t", names=["text", "label"])
     def __len__(self):
