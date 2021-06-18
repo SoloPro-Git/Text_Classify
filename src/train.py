@@ -31,10 +31,11 @@ class transformers_bert_binary_classification(object):
         self.freezeSeed()
         # 使用GPU，通过model.to(device)的方式使用
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        continue_train = self.config.get('training_rule', 'continue_train')
 
         import os
         result_dir = "../result"
-        if len(os.listdir(result_dir)) < 3:  # 因为有一个trained文件，判断有无已经训练好的模型
+        if not continue_train or len(os.listdir(result_dir)) < 3:  # 因为有一个trained文件，判断有无已经训练好的模型
             MODEL_PATH = self.config.get("BERT_path", "file_path")
             config_PATH = self.config.get("BERT_path", "config_path")
             vocab_PATH = self.config.get("BERT_path", "vocab_path")
@@ -202,8 +203,8 @@ class transformers_bert_binary_classification(object):
 
         model_to_save = self.model.module if hasattr(self.model, 'module') else self.model
         torch.save(model_to_save.state_dict(), model_save_path)
-        # model_to_save.config.to_json_file(config_save_path) # !!!'bert_lr' object has no attribute 'config'
-        # self.tokenizer.save_vocabulary(vocab_save_path)
+        model_to_save.model_config.to_json_file(config_save_path)  # !!!'bert_lr' object has no attribute 'config'
+        self.tokenizer.save_vocabulary(vocab_save_path)
         print("model saved...")
 
     def predict(self, sentence):

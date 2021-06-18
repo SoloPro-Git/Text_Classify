@@ -1,10 +1,6 @@
 # -*- coding: utf-8 -*-
 
 """
-Created on 2020-07-29 09:03
-@Author  : Justin Jiang
-@Email   : jw_jiang@pku.edu.com
-
 配置模型、路径、与训练相关参数
 """
 
@@ -24,6 +20,8 @@ class Config(object):
             },
 
             "training_rule": {
+                "continue_train":False, # 是否继续从保存的模型开始训练
+                "hidden_size":768,
                 "max_length": 300, # 输入序列长度，别超过512
                 "hidden_dropout_prob": 0.3,
                 "num_labels": 2, # 几分类个数

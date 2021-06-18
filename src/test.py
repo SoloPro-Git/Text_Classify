@@ -8,7 +8,7 @@ from transformers import BertConfig, BertForSequenceClassification
 from config import Config
 from torch.utils.data import DataLoader
 from transformers import AdamW
-from utils import Dataset, convert_text_to_ids, seq_padding
+from util import Dataset, convert_text_to_ids, seq_padding
 
 
 class bert_classifier(object):

@@ -8,20 +8,22 @@ from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
-from transformers import BertModel,BertTokenizer
+from transformers import BertModel,BertTokenizer,BertConfig
 import torch.nn.functional as F
-
+from config import Config
 
 
 class bert_lr_Config(nn.Module):
     def __init__(self):
-        self.bert_path = "../chinese-bert-wwm"
-        self.config_path = "../chinese-bert-wwm/config.json"
+        self.config = Config()
+        self.bert_path = self.config.get("BERT_path", 'file_path')
+        self.config_path = self.config.get("BERT_path", 'config_path')
 
         # self.tokenizer = BertTokenizer.from_pretrained(self.bert_path)
-        self.hidden_size = 768
-        self.num_labels = 2
-        self.dropout_bertout = 0.2
+        self.hidden_size = self.config.get("training_rule", 'hidden_size')
+        self.num_labels = self.config.get("training_rule", 'num_labels')
+        self.dropout_bertout = self.config.get("training_rule", 'hidden_dropout_prob')
+        self.mytrainedmodel = self.config.get("result", 'model_save_path')
         """
         current loss: 0.35029613971710205 	 current acc: 0.90625
         current loss: 0.12146440659422632 	 current acc: 0.9614427860696517
@@ -34,6 +36,8 @@ class bert_lr(nn.Module):
 
     def __init__(self,config):
         super(bert_lr, self).__init__()
+        self.model_config = BertConfig.from_pretrained(config.config_path, num_labels=config.num_labels,
+                                                       hidden_dropout_prob=config.dropout_bertout)
         self.bert = BertModel.from_pretrained(config.bert_path,config = config.config_path)
         self.dropout_bertout = nn.Dropout(config.dropout_bertout)
         self.num_labels = config.num_labels

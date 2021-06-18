@@ -40,7 +40,8 @@ def convert_text_to_ids(tokenizer, text, max_len=100):
 def seq_padding(tokenizer, X):
     pad_id = tokenizer.convert_tokens_to_ids("[PAD]")
     if len(X) <= 1:
-        return torch.tensor(X)
+        attention_mask = torch.Tensor([[1] * len(x)  for x in X]).long()
+        return torch.tensor(X), attention_mask
     L = [len(x) for x in X]
     ML = max(L)
     attention_mask = torch.Tensor([[1] * len(x) + [0] * (ML - len(x)) for x in X]).long()
