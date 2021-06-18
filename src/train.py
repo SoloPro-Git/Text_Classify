@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-import random
+import random, time
 
 import torch
 import torch.nn as nn
@@ -134,22 +134,23 @@ class transformers_bert_binary_classification(object):
             acc = ((y_pred_label == label.view(-1)).sum()).item()
             # 反向传播
             loss.backward()
-            pbar(i, {'loss': loss.item()})
             self.optimizer.step()
             # epoch 中的 loss 和 acc 累加
             epoch_loss += loss.item()
             epoch_acc += acc
-            if i % self.config.get("training_rule", "show_metric_iter") == 0:
-                print("current loss:", epoch_loss / (i + 1), "\t", "current acc:",
-                      epoch_acc / ((i + 1) * len(label)))
+            pbar(i, {'epoch_loss': epoch_loss / (i + 1), 'epoch_acc': epoch_acc / ((i + 1) * len(label))})
+            # if i % self.config.get("training_rule", "show_metric_iter") == 0:
+            #     print("current loss:", epoch_loss / (i + 1), "\t", "current acc:",
+            #           epoch_acc / ((i + 1) * len(label)))
         return epoch_loss / len(data_iterator), epoch_acc / len(data_iterator.dataset.dataset)
 
     def evaluate(self, data_iterator):
+        pbar = ProgressBar(n_total=len(data_iterator), desc='Eval')
         self.model.eval()
         epoch_loss = 0
         epoch_acc = 0
         with torch.no_grad():
-            for _, batch in enumerate(data_iterator):
+            for i, batch in enumerate(data_iterator):
                 label = batch["label"]
                 text = batch["text"]
                 input_ids, token_type_ids = convert_text_to_ids(self.tokenizer, text)
@@ -170,18 +171,29 @@ class transformers_bert_binary_classification(object):
                 acc = ((y_pred_label == label.view(-1)).sum()).item()
                 epoch_loss += loss.item()
                 epoch_acc += acc
+                pbar(i, {'epoch_loss': epoch_loss / (i + 1), 'epoch_acc': epoch_acc / ((i + 1) * len(label))})
         return epoch_loss / len(data_iterator), epoch_acc / len(data_iterator.dataset.dataset)
 
     def train(self, epochs):
         train_loader, valid_loader = self.get_data()
 
-        for i in range(epochs):
-            print('*********** EPOCH:{} ***********'.format(epochs))
+        for epoch in range(epochs):
+            print('*********** EPOCH:{} ***********'.format(epoch))
             train_loss, train_acc = self.train_an_epoch(train_loader)
             print("train loss: ", train_loss, "\t", "train acc:", train_acc)
             valid_loss, valid_acc = self.evaluate(valid_loader)
             print("valid loss: ", valid_loss, "\t", "valid acc:", valid_acc)
+            self.save_result(epoch, train_loss, train_acc, valid_loss, valid_acc)
         self.save_model()
+
+    def save_result(self, epoch, train_loss, train_acc, valid_loss, valid_acc):
+        cur_time = time.strftime("%Y-%m-%d_%H-%M", time.localtime())
+        content = ','.join(
+            list(map(str, [epoch, train_loss, train_acc, valid_loss, valid_acc, self.config.config_dict])))
+        with open('../result/result_{}.csv'.format(cur_time), mode='a+') as f:
+            if epoch == 0:
+                f.write('epoch,train_loss,train_acc,valid_loss,valid_acc,config\n')
+            f.write(content + '\n')
 
     def save_model(self):
         model_save_path = self.config.get("result", "model_save_path")
