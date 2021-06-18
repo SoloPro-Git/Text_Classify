@@ -10,12 +10,11 @@ import torch
 import torch.nn as nn
 from transformers import BertModel,BertTokenizer,BertConfig
 import torch.nn.functional as F
-from config import Config
 
 
 class bert_lr_Config(nn.Module):
-    def __init__(self):
-        self.config = Config()
+    def __init__(self,config):
+        self.config = config
         self.bert_path = self.config.get("BERT_path", 'file_path')
         self.config_path = self.config.get("BERT_path", 'config_path')
 

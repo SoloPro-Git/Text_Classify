@@ -58,9 +58,9 @@ class transformers_bert_binary_classification(object):
         """
         # 如果想换模型，换成下边这句子
         # bert+lr 跟官方方法差不都
-        # self.model = bert_lr(bert_lr_Config())
-        # self.model = bert_cnn(bert_cnn_Config())
-        self.model = bert_lr_last4layer(bert_lr_last4layer_Config())
+        # self.model = bert_lr(bert_lr_Config(self.config))
+        # self.model = bert_cnn(bert_cnn_Config(self.config))
+        self.model = bert_lr_last4layer(bert_lr_last4layer_Config(self.config))
 
         self.model.to(self.device)
 
