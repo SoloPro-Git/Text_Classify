@@ -28,7 +28,7 @@ class Config(object):
                 "show_metric_iter": 3,
                 "learning_rate": 1e-5,
                 "weight_decay": 1e-2,
-                "batch_size": 4
+                "batch_size": 2
             },
 
             "result": {

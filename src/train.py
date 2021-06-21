@@ -9,12 +9,10 @@ import numpy as np
 
 import transformers
 from config import Config
-from src.bert_CNN import bert_cnn, bert_cnn_Config
 from src.bert_lr_last4layer import bert_lr_last4layer, bert_lr_last4layer_Config
 from transformers import AdamW
-from transformers import BertConfig, BertForSequenceClassification
+from transformers import BertConfig
 from util import Dataset, convert_text_to_ids, seq_padding
-from bert_lr import bert_lr, bert_lr_Config
 from utils.progressbar import ProgressBar
 
 
@@ -64,6 +62,7 @@ class transformers_bert_binary_classification(object):
         self.model.to(self.device)
 
         self.max_seq_length = self.config.get('training_rule', 'max_length')
+        self.cur_time = time.strftime("%Y-%m-%d_%H-%M", time.localtime())
 
     def model_setup(self):
         weight_decay = self.config.get("training_rule", "weight_decay")
@@ -105,11 +104,10 @@ class transformers_bert_binary_classification(object):
         epoch_loss = 0
         epoch_acc = 0
 
-
         for i, batch in enumerate(data_iterator):
             label = batch["label"]
             text = batch["text"]
-            input_ids, token_type_ids = convert_text_to_ids(self.tokenizer, text,self.max_seq_length)
+            input_ids, token_type_ids = convert_text_to_ids(self.tokenizer, text, self.max_seq_length)
             input_ids, input_attention_mask = seq_padding(self.tokenizer, input_ids)
             token_type_ids, _ = seq_padding(self.tokenizer, token_type_ids)
             # 标签形状为 (batch_size, 1)
@@ -119,7 +117,8 @@ class transformers_bert_binary_classification(object):
             # 梯度清零
             self.optimizer.zero_grad()
             # 迁移到GPU
-            input_ids, token_type_ids, label = input_ids.to(self.device), token_type_ids.to(self.device), label.to(
+            input_ids, token_type_ids, input_attention_mask, label = input_ids.to(self.device), token_type_ids.to(
+                self.device), input_attention_mask.to(self.device), label.to(
                 self.device)
             output = self.model(input_ids=input_ids, attention_mask=input_attention_mask, token_type_ids=token_type_ids,
                                 labels=label)  # 这里不需要labels
@@ -156,12 +155,13 @@ class transformers_bert_binary_classification(object):
             for i, batch in enumerate(data_iterator):
                 label = batch["label"]
                 text = batch["text"]
-                input_ids, token_type_ids = convert_text_to_ids(self.tokenizer, text,self.max_seq_length)
+                input_ids, token_type_ids = convert_text_to_ids(self.tokenizer, text, self.max_seq_length)
                 input_ids, input_attention_mask = seq_padding(self.tokenizer, input_ids)
                 token_type_ids, _ = seq_padding(self.tokenizer, token_type_ids)
                 label = label.unsqueeze(1)
                 input_ids, token_type_ids, label = input_ids.long(), token_type_ids.long(), label.long()
-                input_ids, token_type_ids, label = input_ids.to(self.device), token_type_ids.to(self.device), label.to(
+                input_ids, token_type_ids, input_attention_mask, label = input_ids.to(self.device), token_type_ids.to(
+                    self.device), input_attention_mask.to(self.device), label.to(
                     self.device)
                 output = self.model(input_ids=input_ids, attention_mask=input_attention_mask,
                                     token_type_ids=token_type_ids, labels=label)
@@ -190,10 +190,9 @@ class transformers_bert_binary_classification(object):
         self.save_model()
 
     def save_result(self, epoch, train_loss, train_acc, valid_loss, valid_acc):
-        cur_time = time.strftime("%Y-%m-%d_%H-%M", time.localtime())
         content = ','.join(
             list(map(str, [epoch, train_loss, train_acc, valid_loss, valid_acc, self.config.config_dict])))
-        with open('../result/result_{}.csv'.format(cur_time), mode='a+') as f:
+        with open('../result/result_{}.csv'.format(self.cur_time), mode='a+') as f:
             if epoch == 0:
                 f.write('epoch,train_loss,train_acc,valid_loss,valid_acc,config\n')
             f.write(content + '\n')
@@ -214,7 +213,7 @@ class transformers_bert_binary_classification(object):
         self.model_setup()
         self.model.eval()
         # 转token后padding
-        input_ids, token_type_ids = convert_text_to_ids(self.tokenizer, sentence,self.max_seq_length)
+        input_ids, token_type_ids = convert_text_to_ids(self.tokenizer, sentence, self.max_seq_length)
         input_ids, input_attention_mask = seq_padding(self.tokenizer, [input_ids])
         token_type_ids, _ = seq_padding(self.tokenizer, [token_type_ids])
         # 需要 LongTensor
@@ -222,7 +221,8 @@ class transformers_bert_binary_classification(object):
         # 梯度清零
         self.optimizer.zero_grad()
         # 迁移到GPU
-        input_ids, token_type_ids = input_ids.to(self.device), token_type_ids.to(self.device)
+        input_ids, token_type_ids, input_attention_mask = input_ids.to(self.device), token_type_ids.to(
+            self.device), input_attention_mask.to(self.device)
         output = self.model(input_ids=input_ids, attention_mask=input_attention_mask, token_type_ids=token_type_ids)
         # y_pred_prob:各个类别的概率
         y_pred_prob = output[0]

@@ -9,6 +9,7 @@ import pandas as pd
 class Dataset(Dataset):
     def __init__(self, path_to_file):
         self.dataset = pd.read_csv(path_to_file, sep="\t", names=["text", "label"])
+        # self.dataset = pd.read_excel(path_to_file, names=["text", "label"])
 
     def __len__(self):
         return len(self.dataset)

@@ -123,3 +123,6 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+.idea/
+._.DS_Store
+chinese-bert-wwm/
