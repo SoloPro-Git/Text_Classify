@@ -14,6 +14,7 @@ from transformers import AdamW
 from transformers import BertConfig
 from util import Dataset, convert_text_to_ids, seq_padding
 from utils.progressbar import ProgressBar
+from utils.preprocess import Preprocess
 
 
 class transformers_bert_binary_classification(object):
@@ -90,6 +91,11 @@ class transformers_bert_binary_classification(object):
         batch_size = self.config.get("training_rule", "batch_size")
 
         # 数据读入
+        # 预处理
+        if self.config.get('data_preprocess_path','need_preprocess'):
+            preprocess = Preprocess(config=self.config)
+            preprocess.process()
+
         # 加载数据集
         train_set = Dataset(train_set_path)
         train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True, num_workers=2)

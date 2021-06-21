@@ -7,6 +7,12 @@
 class Config(object):
     def __init__(self):
         self.config_dict = {
+            "data_preprocess_path": {
+                "data_path": "../../data/LevelOneIntent/测试数据.xlsx",
+                "train_path": "../../data/LevelOneIntent/train.data",
+                "test_path": "../../data/LevelOneIntent/test.data",
+                "need_preprocess":False
+            },
             "data_path": {
                 "trainingSet_path": "../data/sentiment/sentiment.train.data",
                 "valSet_path": "../data/sentiment/sentiment.valid.data",

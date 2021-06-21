@@ -126,3 +126,4 @@ dmypy.json
 .idea/
 ._.DS_Store
 chinese-bert-wwm/
+data/LevelOneIntent
