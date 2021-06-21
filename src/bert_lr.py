@@ -8,7 +8,7 @@ from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
-from transformers import BertModel,BertTokenizer,BertConfig
+from transformers import BertModel,BertTokenizer,BertConfig,AlbertForMaskedLM,AlbertModel
 import torch.nn.functional as F
 
 
@@ -37,7 +37,10 @@ class bert_lr(nn.Module):
         super(bert_lr, self).__init__()
         self.model_config = BertConfig.from_pretrained(config.config_path, num_labels=config.num_labels,
                                                        hidden_dropout_prob=config.dropout_bertout)
-        self.bert = BertModel.from_pretrained(config.bert_path,config = config.config_path)
+        if 'albert_chinese_tiny' in config.bert_path:
+            self.bert = AlbertModel.from_pretrained(config.bert_path, config=config.config_path)
+        else:
+            self.bert = BertModel.from_pretrained(config.bert_path,config = config.config_path)
         self.dropout_bertout = nn.Dropout(config.dropout_bertout)
         self.num_labels = config.num_labels
         self.classifier = nn.Linear(config.hidden_size, config.num_labels)

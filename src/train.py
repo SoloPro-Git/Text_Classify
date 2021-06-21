@@ -6,6 +6,7 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 import numpy as np
+import pandas as pd
 
 import transformers
 from config import Config
@@ -15,6 +16,7 @@ from transformers import BertConfig
 from util import Dataset, convert_text_to_ids, seq_padding
 from utils.progressbar import ProgressBar
 from utils.preprocess import Preprocess
+from bert_lr import bert_lr, bert_lr_Config
 
 
 class transformers_bert_binary_classification(object):
@@ -30,6 +32,8 @@ class transformers_bert_binary_classification(object):
         self.freezeSeed()
         # 使用GPU，通过model.to(device)的方式使用
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        if self.config.get('training_rule', 'use_cpu'): self.device = 'cpu'
+
         continue_train = self.config.get('training_rule', 'continue_train')
 
         import os
@@ -57,9 +61,9 @@ class transformers_bert_binary_classification(object):
         """
         # 如果想换模型，换成下边这句子
         # bert+lr 跟官方方法差不都
-        # self.model = bert_lr(bert_lr_Config(self.config))
+        self.model = bert_lr(bert_lr_Config(self.config))
         # self.model = bert_cnn(bert_cnn_Config(self.config))
-        self.model = bert_lr_last4layer(bert_lr_last4layer_Config(self.config))
+        # self.model = bert_lr_last4layer(bert_lr_last4layer_Config(self.config))
         self.model.to(self.device)
 
         self.max_seq_length = self.config.get('training_rule', 'max_length')
@@ -88,19 +92,19 @@ class transformers_bert_binary_classification(object):
         """
         train_set_path = self.config.get("data_path", "trainingSet_path")
         valid_set_path = self.config.get("data_path", "valSet_path")
-        batch_size = self.config.get("training_rule", "batch_size")
+        self.batch_size = self.config.get("training_rule", "batch_size")
 
         # 数据读入
         # 预处理
-        if self.config.get('data_preprocess_path','need_preprocess'):
+        if self.config.get('data_preprocess_path', 'need_preprocess'):
             preprocess = Preprocess(config=self.config)
             preprocess.process()
 
         # 加载数据集
         train_set = Dataset(train_set_path)
-        train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True, num_workers=2)
+        train_loader = DataLoader(train_set, batch_size=self.batch_size, shuffle=True, num_workers=2)
         valid_set = Dataset(valid_set_path)
-        valid_loader = DataLoader(valid_set, batch_size=batch_size, shuffle=False, num_workers=2)
+        valid_loader = DataLoader(valid_set, batch_size=self.batch_size, shuffle=False, num_workers=2)
 
         return train_loader, valid_loader
 
@@ -157,6 +161,7 @@ class transformers_bert_binary_classification(object):
         self.model.eval()
         epoch_loss = 0
         epoch_acc = 0
+        result_list = []
         with torch.no_grad():
             for i, batch in enumerate(data_iterator):
                 label = batch["label"]
@@ -182,8 +187,12 @@ class transformers_bert_binary_classification(object):
                 epoch_acc += acc
 
                 # 把运行结果保存起来
-                # result_list.extend(list(zip(text,label.squeeze().tolist(),y_pred_label.tolist())))
+                if self.batch_size != 1:
+                    result_list.extend(list(zip(text, label.squeeze().tolist(), y_pred_label.tolist())))
+                else:
+                    result_list.append([text[0], label.squeeze().tolist(), y_pred_label.tolist()[0]])
                 pbar(i, {'epoch_loss': epoch_loss / (i + 1), 'epoch_acc': epoch_acc / ((i + 1) * len(label))})
+        pd.DataFrame(result_list).to_excel(self.config.get('valid_pred_output', 'valid_output'), index=False)
         return epoch_loss / len(data_iterator), epoch_acc / len(data_iterator.dataset.dataset)
 
     def train(self, epochs):
@@ -191,9 +200,13 @@ class transformers_bert_binary_classification(object):
 
         for epoch in range(epochs):
             print('*********** EPOCH:{} ***********'.format(epoch))
+
             train_loss, train_acc = self.train_an_epoch(train_loader)
             print("train loss: ", train_loss, "\t", "train acc:", train_acc)
+
+            valid_start_time = time.time()
             valid_loss, valid_acc = self.evaluate(valid_loader)
+            print('valid_time: ', time.time() - valid_start_time, ' second')
             print("valid loss: ", valid_loss, "\t", "valid acc:", valid_acc)
             self.save_result(epoch, train_loss, train_acc, valid_loss, valid_acc)
         self.save_model()

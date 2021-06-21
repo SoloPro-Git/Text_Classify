@@ -20,27 +20,33 @@ class Config(object):
             },
 
             "BERT_path": {
-                "file_path": '../chinese-bert-wwm/',
-                "config_path": '../chinese-bert-wwm/',
-                "vocab_path": '../chinese-bert-wwm/',
+                "file_path": '../albert_chinese_tiny/',
+                "config_path": '../albert_chinese_tiny/',
+                "vocab_path": '../albert_chinese_tiny/',
             },
 
             "training_rule": {
                 "continue_train":False, # 是否继续从保存的模型开始训练
-                "hidden_size":768,
-                "max_length": 300, # 输入序列长度，别超过512
-                "hidden_dropout_prob": 0.3,
+                "use_cpu":True,
+                "hidden_size":312,
+                "max_length": 70, # 输入序列长度，别超过512
+                "hidden_dropout_prob": 0.2,
                 "num_labels": 2, # 几分类个数
                 "show_metric_iter": 3,
                 "learning_rate": 1e-5,
                 "weight_decay": 1e-2,
-                "batch_size": 2
+                "batch_size": 1
             },
 
             "result": {
                 "model_save_path": '../result/bert_clf_model.bin',
                 "config_save_path": '../result/bert_clf_config.json',
                 "vocab_save_path": '../result/bert_clf_vocab.txt'
+            }
+            ,
+            "valid_pred_output":{
+                "valid_output":'../result/valid.xls',
+                "pred_output": '../result/pred.xls'
             }
         }
 
