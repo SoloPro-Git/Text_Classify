@@ -20,6 +20,7 @@ class Config(object):
             },
 
             "BERT_path": {
+                "model_type":'Albert',
                 "file_path": '../albert_chinese_tiny/',
                 "config_path": '../albert_chinese_tiny/',
                 "vocab_path": '../albert_chinese_tiny/',
@@ -27,15 +28,15 @@ class Config(object):
 
             "training_rule": {
                 "continue_train":True, # 是否继续从保存的模型开始训练
-                "use_cpu":True,
+                "use_cpu":False,
                 "hidden_size":312,
                 "max_length": 100, # 输入序列长度，别超过512
                 "hidden_dropout_prob": 0.2,
                 "num_labels": 2, # 几分类个数
                 "show_metric_iter": 3,
-                "learning_rate": 1e-5,
+                "learning_rate": 1e-4,
                 "weight_decay": 1e-2,
-                "batch_size": 1
+                "batch_size": 32
             },
 
             "result": {

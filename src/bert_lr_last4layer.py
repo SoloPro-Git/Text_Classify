@@ -17,8 +17,15 @@ import torch.nn.functional as F
 class bert_lr_last4layer_Config(nn.Module):
     def __init__(self, config):
         self.config = config
-        self.bert_path = self.config.get("BERT_path", 'file_path')
-        self.config_path = self.config.get("BERT_path", 'config_path')
+        self.model_type = config.get("BERT_path", 'model_type')
+
+        continue_train = self.config.get('training_rule', 'continue_train')
+        if not continue_train:
+            self.bert_path = self.config.get("BERT_path", 'file_path')
+            self.config_path = self.config.get("BERT_path", 'config_path')
+        else:
+            self.bert_path = self.config.get("result", 'model_save_path')
+            self.config_path = self.config.get("result", 'config_save_path')
 
         # self.tokenizer = BertTokenizer.from_pretrained(self.bert_path)
         self.hidden_size = self.config.get("training_rule", 'hidden_size')
@@ -40,7 +47,7 @@ class bert_lr_last4layer(nn.Module):
         super(bert_lr_last4layer, self).__init__()
         self.model_config = BertConfig.from_pretrained(config.config_path, num_labels=config.num_labels,
                                                        hidden_dropout_prob=config.dropout_bertout)
-        if 'albert_chinese_tiny' in config.bert_path:
+        if config.model_type == 'Albert':
             self.bert = AlbertModel.from_pretrained(config.bert_path, config=config.config_path)
         else:
             self.bert = BertModel.from_pretrained(config.bert_path, config=config.config_path)
