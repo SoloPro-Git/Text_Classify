@@ -26,10 +26,10 @@ class Config(object):
             },
 
             "training_rule": {
-                "continue_train":False, # 是否继续从保存的模型开始训练
+                "continue_train":True, # 是否继续从保存的模型开始训练
                 "use_cpu":True,
                 "hidden_size":312,
-                "max_length": 70, # 输入序列长度，别超过512
+                "max_length": 100, # 输入序列长度，别超过512
                 "hidden_dropout_prob": 0.2,
                 "num_labels": 2, # 几分类个数
                 "show_metric_iter": 3,

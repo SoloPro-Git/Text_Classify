@@ -10,6 +10,7 @@ import numpy as np
 import transformers
 from config import Config
 from src.bert_lr_last4layer import bert_lr_last4layer, bert_lr_last4layer_Config
+from bert_lr import bert_lr, bert_lr_Config
 from transformers import AdamW
 from transformers import BertConfig
 from util import Dataset, convert_text_to_ids, seq_padding
@@ -57,9 +58,9 @@ class transformers_bert_binary_classification(object):
         """
         # 如果想换模型，换成下边这句子
         # bert+lr 跟官方方法差不都
-        # self.model = bert_lr(bert_lr_Config(self.config))
+        self.model = bert_lr(bert_lr_Config(self.config))
         # self.model = bert_cnn(bert_cnn_Config(self.config))
-        self.model = bert_lr_last4layer(bert_lr_last4layer_Config(self.config))
+        # self.model = bert_lr_last4layer(bert_lr_last4layer_Config(self.config))
         self.model.to(self.device)
 
         self.max_seq_length = self.config.get('training_rule', 'max_length')
@@ -92,7 +93,7 @@ class transformers_bert_binary_classification(object):
 
         # 数据读入
         # 预处理
-        if self.config.get('data_preprocess_path','need_preprocess'):
+        if self.config.get('data_preprocess_path', 'need_preprocess'):
             preprocess = Preprocess(config=self.config)
             preprocess.process()
 
@@ -104,53 +105,14 @@ class transformers_bert_binary_classification(object):
 
         return train_loader, valid_loader
 
-    def train_an_epoch(self, data_iterator):
-        pbar = ProgressBar(n_total=len(data_iterator), desc='Training')
-        self.model_setup()
-        epoch_loss = 0
-        epoch_acc = 0
+    def eval(self):
+        train_loader, valid_loader = self.get_data()
 
-        for i, batch in enumerate(data_iterator):
-            label = batch["label"]
-            text = batch["text"]
-            input_ids, token_type_ids = convert_text_to_ids(self.tokenizer, text, self.max_seq_length)
-            input_ids, input_attention_mask = seq_padding(self.tokenizer, input_ids)
-            token_type_ids, _ = seq_padding(self.tokenizer, token_type_ids)
-            # 标签形状为 (batch_size, 1)
-            label = label.unsqueeze(1)
-            # 需要 LongTensor
-            input_ids, token_type_ids, label = input_ids.long(), token_type_ids.long(), label.long()
-            # 梯度清零
-            self.optimizer.zero_grad()
-            # 迁移到GPU
-            input_ids, token_type_ids, input_attention_mask, label = input_ids.to(self.device), token_type_ids.to(
-                self.device), input_attention_mask.to(self.device), label.to(
-                self.device)
-            output = self.model(input_ids=input_ids, attention_mask=input_attention_mask, token_type_ids=token_type_ids,
-                                labels=label)  # 这里不需要labels
-            # BertForSequenceClassification的输出loss和logits
-            # BertModel原本的模型输出是last_hidden_state，pooler_output
-            # bert_cnn的输出是[batch_size, num_class]
+        valid_start_time = time.time()
+        valid_loss, valid_acc = self.evaluate(valid_loader)
+        print('valid_time: ', time.time() - valid_start_time, ' second')
+        print("valid loss: ", valid_loss, "\t", "valid acc:", valid_acc)
 
-            y_pred_prob = output[1]
-            y_pred_label = y_pred_prob.argmax(dim=1)
-            # 计算loss
-            # 这个 loss 和 output[0] 是一样的
-            loss = self.criterion(y_pred_prob.view(-1, 2), label.view(-1))
-            # loss = output[0]
-            # 计算acc
-            acc = ((y_pred_label == label.view(-1)).sum()).item()
-            # 反向传播
-            loss.backward()
-            self.optimizer.step()
-            # epoch 中的 loss 和 acc 累加
-            epoch_loss += loss.item()
-            epoch_acc += acc
-            pbar(i, {'epoch_loss': epoch_loss / (i + 1), 'epoch_acc': epoch_acc / ((i + 1) * len(label))})
-            # if i % self.config.get("training_rule", "show_metric_iter") == 0:
-            #     print("current loss:", epoch_loss / (i + 1), "\t", "current acc:",
-            #           epoch_acc / ((i + 1) * len(label)))
-        return epoch_loss / len(data_iterator), epoch_acc / len(data_iterator.dataset.dataset)
 
     def evaluate(self, data_iterator):
         pbar = ProgressBar(n_total=len(data_iterator), desc='Eval')
@@ -186,36 +148,6 @@ class transformers_bert_binary_classification(object):
                 pbar(i, {'epoch_loss': epoch_loss / (i + 1), 'epoch_acc': epoch_acc / ((i + 1) * len(label))})
         return epoch_loss / len(data_iterator), epoch_acc / len(data_iterator.dataset.dataset)
 
-    def train(self, epochs):
-        train_loader, valid_loader = self.get_data()
-
-        for epoch in range(epochs):
-            print('*********** EPOCH:{} ***********'.format(epoch))
-            train_loss, train_acc = self.train_an_epoch(train_loader)
-            print("train loss: ", train_loss, "\t", "train acc:", train_acc)
-            valid_loss, valid_acc = self.evaluate(valid_loader)
-            print("valid loss: ", valid_loss, "\t", "valid acc:", valid_acc)
-            self.save_result(epoch, train_loss, train_acc, valid_loss, valid_acc)
-        self.save_model()
-
-    def save_result(self, epoch, train_loss, train_acc, valid_loss, valid_acc):
-        content = ','.join(
-            list(map(str, [epoch, train_loss, train_acc, valid_loss, valid_acc, self.config.config_dict])))
-        with open('../result/result_{}.csv'.format(self.cur_time), mode='a+') as f:
-            if epoch == 0:
-                f.write('epoch,train_loss,train_acc,valid_loss,valid_acc,config\n')
-            f.write(content + '\n')
-
-    def save_model(self):
-        model_save_path = self.config.get("result", "model_save_path")
-        config_save_path = self.config.get("result", "config_save_path")
-        vocab_save_path = self.config.get("result", "vocab_save_path")
-
-        model_to_save = self.model.module if hasattr(self.model, 'module') else self.model
-        torch.save(model_to_save.state_dict(), model_save_path)
-        model_to_save.model_config.to_json_file(config_save_path)  # !!!'bert_lr' object has no attribute 'config'
-        self.tokenizer.save_vocabulary(vocab_save_path)
-        print("model saved...")
 
     def predict(self, sentence):
         # self.model.setup()
@@ -255,7 +187,7 @@ class transformers_bert_binary_classification(object):
 
 if __name__ == '__main__':
     classifier = transformers_bert_binary_classification()
-    classifier.train(2)
+    classifier.eval()
     print(classifier.predict("交通不好"))  # 0
     print(classifier.predict("这个书不推荐看"))  # 0
     print(classifier.predict("交通挺好的"))  # 1

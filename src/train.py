@@ -211,6 +211,8 @@ class transformers_bert_binary_classification(object):
             self.save_result(epoch, train_loss, train_acc, valid_loss, valid_acc)
         self.save_model()
 
+
+
     def save_result(self, epoch, train_loss, train_acc, valid_loss, valid_acc):
         content = ','.join(
             list(map(str, [epoch, train_loss, train_acc, valid_loss, valid_acc, self.config.config_dict])))
@@ -268,7 +270,7 @@ class transformers_bert_binary_classification(object):
 
 if __name__ == '__main__':
     classifier = transformers_bert_binary_classification()
-    classifier.train(2)
+    classifier.train(5)
     print(classifier.predict("交通不好"))  # 0
     print(classifier.predict("这个书不推荐看"))  # 0
     print(classifier.predict("交通挺好的"))  # 1
