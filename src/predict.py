@@ -12,7 +12,7 @@ from config import Config
 from src.bert_lr_last4layer import bert_lr_last4layer, bert_lr_last4layer_Config
 from bert_lr import bert_lr, bert_lr_Config
 from transformers import AdamW
-from transformers import BertConfig
+from transformers import BertConfig, AlbertModel, BertModel
 from util import Dataset, convert_text_to_ids, seq_padding
 from utils.progressbar import ProgressBar
 from utils.preprocess import Preprocess
@@ -22,43 +22,33 @@ class transformers_bert_binary_classification(object):
     def __init__(self):
         self.config = Config()
         self.device_setup()
+        self.model_setup()
 
     def device_setup(self):
         """
         设备配置并加载BERT模型
         :return:
         """
-        self.freezeSeed()
+
         # 使用GPU，通过model.to(device)的方式使用
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-        continue_train = self.config.get('training_rule', 'continue_train')
 
-        import os
-        result_dir = "../result"
-        if not continue_train or len(os.listdir(result_dir)) < 3:  # 因为有一个trained文件，判断有无已经训练好的模型
-            MODEL_PATH = self.config.get("BERT_path", "file_path")
-            config_PATH = self.config.get("BERT_path", "config_path")
-            vocab_PATH = self.config.get("BERT_path", "vocab_path")
-        else:
-            MODEL_PATH = self.config.get("result", "model_save_path")
-            config_PATH = self.config.get("result", "config_save_path")
-            vocab_PATH = self.config.get("result", "vocab_save_path")
-
-        num_labels = self.config.get("training_rule", "num_labels")
-        hidden_dropout_prob = self.config.get("training_rule", "hidden_dropout_prob")
+        MODEL_PATH = self.config.get("result", "model_save_path")
+        config_PATH = self.config.get("result", "config_save_path")
+        vocab_PATH = self.config.get("result", "vocab_save_path")
 
         # 通过词典导入分词器
         self.tokenizer = transformers.BertTokenizer.from_pretrained(vocab_PATH)
-        self.model_config = BertConfig.from_pretrained(config_PATH, num_labels=num_labels,
-                                                       hidden_dropout_prob=hidden_dropout_prob)
-        # self.model = BertForSequenceClassification.from_pretrained(MODEL_PATH, config=self.model_config)
-        """
-        train loss:  0.10704718510208534 	 train acc: 0.9637151849872321
-        valid loss:  0.17820182011222863 	 valid acc: 0.9459971577451445
-        """
-        # 如果想换模型，换成下边这句子
-        # bert+lr 跟官方方法差不都
+        self.model_config = BertConfig.from_pretrained(config_PATH)
+        self.model_type = self.config.get("BERT_path", 'model_type')
+
+        # if self.model_type == 'Albert':
+        #     self.model = AlbertModel.from_pretrained(MODEL_PATH, config=config_PATH)
+        # else:
+        #     self.model = BertModel.from_pretrained(MODEL_PATH, config=config_PATH)
         self.model = bert_lr(bert_lr_Config(self.config))
+        self.state_dict = torch.load(MODEL_PATH)
+        self.model.load_state_dict(self.state_dict)
         # self.model = bert_cnn(bert_cnn_Config(self.config))
         # self.model = bert_lr_last4layer(bert_lr_last4layer_Config(self.config))
         self.model.to(self.device)
@@ -113,7 +103,6 @@ class transformers_bert_binary_classification(object):
         print('valid_time: ', time.time() - valid_start_time, ' second')
         print("valid loss: ", valid_loss, "\t", "valid acc:", valid_acc)
 
-
     def evaluate(self, data_iterator):
         pbar = ProgressBar(n_total=len(data_iterator), desc='Eval')
         self.model.eval()
@@ -148,10 +137,8 @@ class transformers_bert_binary_classification(object):
                 pbar(i, {'epoch_loss': epoch_loss / (i + 1), 'epoch_acc': epoch_acc / ((i + 1) * len(label))})
         return epoch_loss / len(data_iterator), epoch_acc / len(data_iterator.dataset.dataset)
 
-
     def predict(self, sentence):
         # self.model.setup()
-        self.model_setup()
         self.model.eval()
         # 转token后padding
         input_ids, token_type_ids = convert_text_to_ids(self.tokenizer, sentence, self.max_seq_length)
@@ -172,17 +159,6 @@ class transformers_bert_binary_classification(object):
 
         # 将torch.tensor转换回int形式
         return y_pred_label.item()
-
-    def freezeSeed(self):
-        seed = 1
-        torch.manual_seed(seed)
-        torch.cuda.manual_seed(seed)
-        torch.cuda.manual_seed_all(seed)
-        np.random.seed(seed)  # Numpy module.
-        random.seed(seed)  # Python random module.
-        torch.manual_seed(seed)
-        torch.backends.cudnn.benchmark = False
-        torch.backends.cudnn.deterministic = True
 
 
 if __name__ == '__main__':
